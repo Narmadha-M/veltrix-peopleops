@@ -1,0 +1,21 @@
+# Python / tooling
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Secrets: never commit real credentials (.env.example is the template)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Assessment data (provided separately) and runtime output
+data/
+logs/
+.models/
+corpus
+manifest.json
+veltrix.db

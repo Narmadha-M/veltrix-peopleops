@@ -1,0 +1,34 @@
+services:
+  peopleops:
+    build: .
+    image: veltrix-peopleops:latest
+    ports:
+      - "${HOST_PORT:-8000}:8000"    # host port; the service always listens on 8000 inside
+    volumes:
+      - ./data:/app/data          # corpus/, manifest.json, veltrix.db
+      - ./logs:/app/logs
+    environment:
+      # Paths are resolved inside the container, relative to /app (so ./data is the mounted folder).
+      CORPUS_DIR: ${CORPUS_DIR:-./data/corpus}
+      MANIFEST_PATH: ${MANIFEST_PATH:-./data/manifest.json}
+      DB_PATH: ${DB_PATH:-./data/veltrix.db}
+      APP_TODAY: ${APP_TODAY:-}
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      LLM_MODEL: ${LLM_MODEL:-}
+      LLM_TIMEOUT_S: ${LLM_TIMEOUT_S:-12}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      EMBEDDINGS: ${EMBEDDINGS:-fastembed}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-BAAI/bge-small-en-v1.5}
+      LOG_FILE: ${LOG_FILE:-./logs/app.log}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      CORPUS_TOKEN_BUDGET: ${CORPUS_TOKEN_BUDGET:-3000}
+      LEAVE_YEAR: ${LEAVE_YEAR:-2026}
+      DEMO_EMPLOYEE_ID: ${DEMO_EMPLOYEE_ID:-}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/health').status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 20s

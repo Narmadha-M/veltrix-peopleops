@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Veltrix PeopleOps</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+
+<!-- ======================= LOGIN ======================= -->
+<section id="login" aria-labelledby="loginTitle">
+  <div class="hero" aria-hidden="true">
+    <div class="brand"><div class="brand-mark"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></svg></div><span class="brand-name">Veltrix PeopleOps</span></div>
+    <div>
+      <h2>Your HR questions, <em>answered in seconds.</em></h2>
+      <p class="sub">Policies, holidays and your leave — in one friendly conversation.</p>
+      <div class="features">
+        <div class="feature"><div class="fi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg></div><div><b>Answers with sources</b><span>Every policy answer cites the exact document and section.</span></div></div>
+        <div class="feature"><div class="fi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M9 16l2 2 4-4"/></svg></div><div><b>Leave in a few clicks</b><span>Check balances, apply or cancel — always with your confirmation.</span></div></div>
+        <div class="feature"><div class="fi"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><b>Private by design</b><span>You only see what your role allows. Personal data stays protected.</span></div></div>
+      </div>
+    </div>
+    <div class="foot">Veltrix Systems · People Team</div>
+  </div>
+  <div class="login-side">
+    <form class="login-card" id="loginForm" novalidate>
+      <div class="brand"><div class="brand-mark" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></svg></div><span class="brand-name">Veltrix PeopleOps</span></div>
+      <h1 id="loginTitle">Welcome back</h1>
+      <p class="lead">Sign in with your work email to chat with your HR assistant.</p>
+      <label class="field" for="email">Work email</label>
+      <div class="input-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+        <input class="input" id="email" type="email" autocomplete="email" inputmode="email" placeholder="name@company.com" required aria-describedby="loginErr">
+      </div>
+      <p class="err-text" id="loginErr" role="alert"></p>
+      <button class="btn btn-primary btn-block" id="loginBtn" type="submit">Continue <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 5l7 7-7 7"/></svg></button>
+      <p class="fine"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><span>Demo sign-in, no password. Any valid email works; emails not in the HR database use a demo employee account.</span></p>
+    </form>
+  </div>
+</section>
+
+<!-- ======================= APP ======================= -->
+<div id="app" class="hidden">
+  <aside class="sidebar" id="sidebar" aria-label="Conversations">
+    <div class="side-top">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true" style="width:32px;height:32px;border-radius:10px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></svg></div>
+        <span class="brand-name" style="font-size:16px">PeopleOps</span>
+      </div>
+      <button class="icon-btn" id="themeBtn" type="button" aria-label="Toggle dark mode" title="Toggle dark mode"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+    </div>
+    <button class="btn new-chat" id="newChat" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New chat</button>
+    <ul id="convList"></ul>
+    <div class="profile">
+      <div class="avatar" id="avatar" aria-hidden="true"></div>
+      <div class="profile-text">
+        <div class="profile-name" id="pName"></div>
+        <div class="profile-meta" id="pMeta"></div>
+      </div>
+      <button class="icon-btn" id="logoutBtn" type="button" aria-label="Sign out" title="Sign out"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg></button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim"></div>
+
+  <main class="main">
+    <div class="topbar" id="topbar">
+      <button class="icon-btn" id="menuBtn" type="button" aria-label="Open conversations"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <div class="title" id="convTitle">New chat</div>
+      <span class="status" id="aiStatus" title="Assistant status"><i></i><span class="lbl">Checking…</span></span>
+    </div>
+    <div class="scroller" id="scroller">
+      <div id="welcome" class="welcome">
+        <div class="orb" aria-hidden="true"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></svg></div>
+        <h2 id="greet">Good day</h2>
+        <p>How can I help you today?</p>
+        <div class="cards" id="cards"></div>
+        <div class="trust">
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></svg>Cited answers</span>
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Confirms before any change</span>
+          <span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Role-based access</span>
+        </div>
+      </div>
+      <div class="thread" id="thread" aria-live="polite"></div>
+    </div>
+    <div class="composer-wrap">
+      <form class="composer" id="composer">
+        <label for="q" class="sr-only">Message</label>
+        <textarea id="q" rows="1" placeholder="Ask about leave, holidays or HR policies…" autocomplete="off"></textarea>
+        <button id="sendBtn" type="submit" aria-label="Send message" disabled><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
+      </form>
+      <div class="below"><span>Answers come from Veltrix HR documents and your leave records.</span><span class="keys"><kbd>Enter</kbd> send · <kbd>Shift</kbd>+<kbd>Enter</kbd> new line</span></div>
+    </div>
+  </main>
+</div>
+
+<script src="/static/js/app.js" defer></script>
+</body>
+</html>
