@@ -352,11 +352,8 @@ const closeSidebar = () => { $("#sidebar").classList.remove("open"); $("#scrim")
 $("#menuBtn").onclick = () => { $("#sidebar").classList.add("open"); $("#scrim").classList.add("show"); };
 $("#scrim").onclick = closeSidebar;
 
-if (user) enterApp(); else $("#email").focus();
-})();
-
-
 // Citation chips open the source document in a new tab (via a short-lived signed link, access checked server-side).
+// Must stay inside this closure: `user` is a closure variable.
 document.addEventListener("click", async ev => {
   const chip = ev.target.closest(".src[data-doc]");
   if (!chip || !user) return;
@@ -373,3 +370,6 @@ document.addEventListener("click", async ev => {
     alert("This document can't be opened right now.");
   }
 });
+
+if (user) enterApp(); else $("#email").focus();
+})();

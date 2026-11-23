@@ -407,6 +407,71 @@ def test_offline_holiday_list_comes_from_calendar(client, broken_llm):
     assert body["answer"].count("\n- **") >= 2          # one bullet per holiday
 
 
+# ------------------------------------------------------------------ offline: other employees and teams
+def test_offline_hr_looks_up_one_employee_by_id(client, broken_llm):
+    body = chat(client, "E100", "What is the leave balance of E201?").json()
+    assert_contract(body)
+    assert body["route"] == "tool" and body["tool_calls"] == [
+        {"name": "get_leave_balance", "args": {"employee_id": "E201"}, "status": "success"}]
+    assert "E201's current leave balance" in body["answer"]
+
+
+def test_offline_hr_looks_up_one_employee_by_name(client, broken_llm):
+    body = chat(client, "E100", "Show the leave requests of Priya Nair").json()
+    assert body["tool_calls"] == [{"name": "list_leave_requests", "args": {"employee_id": "E201"},
+                                   "status": "success"}]
+    assert "req-201-future" in body["answer"]
+
+
+def test_offline_manager_sees_team_leave_next_week(client, broken_llm):
+    body = chat(client, "E200", "Who in my team is on leave next week?").json()
+    assert_contract(body)
+    assert body["route"] == "tool" and body["tool_calls"] == [
+        {"name": "get_team_leave", "args": {"start_date": "2026-11-23", "end_date": "2026-11-27"},
+         "status": "success"}]
+    assert "E202" in body["answer"] and "E301" not in body["answer"]
+
+
+def test_offline_manager_can_view_own_report_only(client, broken_llm):
+    assert chat(client, "E200", "leave balance of E202").json()["route"] == "tool"
+    body = chat(client, "E200", "leave balance of E301").json()
+    assert body["route"] == "refuse" and not body["tool_calls"]
+
+
+def test_offline_employee_cannot_see_colleague_or_team(client, broken_llm):
+    body = chat(client, "E201", "What is the leave balance of E202?").json()
+    assert body["route"] == "refuse" and not body["tool_calls"] and "balance" not in body["answer"].lower()
+    body = chat(client, "E201", "Who in my team is on leave next week?").json()
+    assert body["route"] == "refuse" and not body["tool_calls"]
+
+
+def test_offline_many_employees_is_bulk(client, broken_llm):
+    assert chat(client, "E100", "leave balances of E201 and E202").json()["route"] == "refuse"
+    assert chat(client, "E200", "show my team's leave balances").json()["route"] == "refuse"
+
+
+def test_offline_policy_question_about_teams_is_not_a_lookup(client, broken_llm):
+    body = chat(client, "E200", "What is the policy for approving team members leave?").json()
+    assert not any(c["name"] == "get_team_leave" for c in body["tool_calls"])
+
+
+def test_offline_named_employee_leave_plans_is_a_lookup(client, broken_llm):
+    body = chat(client, "E100", "E201 leave plans").json()
+    assert_contract(body)
+    assert body["route"] == "tool" and body["tool_calls"] == [
+        {"name": "list_leave_requests", "args": {"employee_id": "E201"}, "status": "success"}]
+    body = chat(client, "E201", "E201 leave plans").json()            # own ID works too
+    assert body["tool_calls"][0]["args"] == {"employee_id": "E201"}
+    assert chat(client, "E201", "E202 leave plans").json()["route"] == "refuse"
+    assert chat(client, "E100", "tell me about E201").json()["route"] == "clarify"
+    assert chat(client, "E201", "tell me about E202").json()["route"] == "refuse"
+
+
+def test_offline_cannot_apply_for_someone_else(client, broken_llm):
+    body = chat(client, "E200", "Apply annual leave for E202 from 7 Dec to 8 Dec", "off-other").json()
+    assert body["route"] == "refuse" and not body["pending_confirmation"]
+
+
 # ------------------------------------------------------------------ opening cited documents
 def _open(client, eid, doc_id):
     r = client.post("/ui/doc-link", json={"doc_id": doc_id}, headers={"X-Employee-Id": eid})

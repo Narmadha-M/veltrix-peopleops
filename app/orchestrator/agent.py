@@ -116,13 +116,17 @@ def _planner_input(ctx: RequestContext, session: Session, message: str, pending:
 
 def _offline(ctx: RequestContext, message: str, request_id: str, exc: Exception,
              session: Session | None = None) -> ChatResult:
-    from app.orchestrator.offline import offline_answer
+    from app.orchestrator.offline import is_team_question, offline_answer, other_employees
     from app.orchestrator.rule_parser import parse_write
     emit("keyword")
     log_event(log, "llm_unavailable_offline_mode", request_id=request_id, error=type(exc).__name__)
     try:
-        call = parse_write(message, today()) if session is not None else None
+        # "who in my team is on leave next week" is a team lookup, never a leave application
+        call = parse_write(message, today()) if session is not None and not is_team_question(message) else None
         if call:          # rule-parsed apply/cancel: same validation + proposal + "yes" confirmation as LLM mode
+            if other_employees(ctx, message):
+                return ChatResult("I can only apply for or cancel your own leave. Each employee manages their "
+                                  "own leave requests.", "refuse")
             return _handle_write(ctx, session, call)
         r = offline_answer(ctx, message)
     except ClarifyNeeded as c:

@@ -18,10 +18,96 @@ from app.tools.leave_tools import RequestContext
 
 OFFLINE_NOTE = "(AI summaries are unavailable right now, so this is a keyword-based answer.)"
 
-_BALANCE = re.compile(r"\bbalance\b|\bdays (do i have|left|remaining)\b|\bhow many (leave )?days (do )?i have\b", re.I)
+_BALANCE = re.compile(r"\bbalances?\b|\bdays (do i have|left|remaining)\b|\bhow many (leave )?days (do )?i have\b", re.I)
 _REQUESTS = re.compile(r"\b(my|show|list)\b.*\b(leave )?requests?\b|\bmy leaves?\b", re.I)
 _HOLIDAYS = re.compile(r"\b(public |restricted |optional |bank )?holidays?\b|\bholiday (list|calendar)\b", re.I)
 _UPCOMING = re.compile(r"\b(left|remaining|upcoming|next|coming|rest of)\b", re.I)
+
+# Questions about other people: an employee ID ("E2004") or a full name from the employees table.
+_EMP_ID = re.compile(r"\b([A-Za-z]\d{3,5})\b")
+_REQUEST_ID = re.compile(r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b", re.I)
+# Manager questions about their direct reports.
+_TEAM = re.compile(r"\b(my team|team'?s|team members?|my (direct )?reports|direct reports|my staff)\b", re.I)
+_WHO_OFF = re.compile(r"\bwho\b.*\b(on leave|off|away|out of office|absent)\b", re.I)
+_ABSENT = re.compile(r"\b(on leave|off|away|out of office|absent|leave (calendar|schedule|plan))\b", re.I)
+_SHOW = re.compile(r"\b(show|list|see|view|check)\b", re.I)
+_LEAVE_INFO = re.compile(r"\b(leaves?|plans?|planned|booked|off|away|absen\w*|vacations?|time off|pto|"
+                         r"schedule|calendar|holidays?|trips?)\b", re.I)
+_POLICY_WORDS = re.compile(r"\b(polic(y|ies)|rules?|approv\w*|process|how (do|can|should|to))\b", re.I)
+
+
+def is_team_question(message: str) -> bool:
+    """A lookup of who is on leave in the manager's team, not a policy question that mentions teams."""
+    if _POLICY_WORDS.search(message):
+        return False
+    if _WHO_OFF.search(message):
+        return True
+    return bool(_TEAM.search(message) and (_ABSENT.search(message) or _SHOW.search(message)))
+
+
+def other_employees(ctx: RequestContext, message: str) -> list[str]:
+    """Employee IDs the message refers to, other than the requester (IDs, or full names from the database)."""
+    from app.data.pii import PII
+
+    text = _REQUEST_ID.sub(" ", message)            # a request ID like '...-e123-...' is not an employee ID
+    found: list[str] = []
+    for m in _EMP_ID.findall(text):
+        found.append(m.upper())
+    PII.ensure()
+    low = f" {text.lower()} "
+    for p in PII.people:
+        name = (p.get("full_name") or "").lower().strip()
+        if name and re.search(rf"\b{re.escape(name)}\b", low):
+            found.append(p["employee_id"])
+    out: list[str] = []
+    for e in found:
+        if e != ctx.employee_id and e not in out:
+            out.append(e)
+    return out
+
+
+def _team_range(message: str, now) -> tuple[str, str, bool]:
+    """(start, end, defaulted) for a team-leave question. Defaults to the next 30 days."""
+    import calendar
+    from datetime import timedelta
+
+    from app.orchestrator.rule_parser import parse_date_range
+
+    low = message.lower()
+    if re.search(r"\btoday\b", low):
+        return now.isoformat(), now.isoformat(), False
+    if re.search(r"\btomorrow\b", low):
+        d = now + timedelta(days=1)
+        return d.isoformat(), d.isoformat(), False
+    if "this month" in low:
+        last = now.replace(day=calendar.monthrange(now.year, now.month)[1])
+        return now.isoformat(), last.isoformat(), False
+    if "next month" in low:
+        first = (now.replace(day=1) + timedelta(days=32)).replace(day=1)
+        last = first.replace(day=calendar.monthrange(first.year, first.month)[1])
+        return first.isoformat(), last.isoformat(), False
+    rng = parse_date_range(message, now)
+    if rng:
+        return rng[0], rng[1], False
+    return now.isoformat(), (now + timedelta(days=30)).isoformat(), True
+
+
+def _refuse(text: str) -> dict:
+    return {"answer": text, "route": "refuse", "citations": [], "tool_calls": []}
+
+
+def _team_answer(ctx: RequestContext, message: str) -> dict:
+    """'Who in my team is on leave next week?' -> get_team_leave (managers only; others get PermissionDenied)."""
+    from app.orchestrator.agent import _format_tool_results
+
+    start, end, defaulted = _team_range(message, today())
+    out = T.get_team_leave(ctx, start, end)
+    answer = _format_tool_results(ctx, [{"tool": "get_team_leave", "result": out}])
+    if defaulted:
+        answer += "\n\n(No dates were given, so this shows the next 30 days.)"
+    return {"answer": answer, "route": "tool", "citations": [],
+            "tool_calls": [{"name": "get_team_leave", "args": {"start_date": start, "end_date": end},
+                            "status": "success"}]}
 
 
 def _holiday_answer(ctx: RequestContext, message: str) -> dict | None:
@@ -84,23 +170,55 @@ def _coverage(terms: set[str], text: str) -> float:
 
 
 def offline_answer(ctx: RequestContext, message: str) -> dict:
-    """Returns dict(answer, route, citations, tool_calls)."""
-    if _BALANCE.search(message):
-        leave_type = "sick" if re.search(r"\bsick\b", message, re.I) else (
-            "annual" if re.search(r"\bannual|vacation\b", message, re.I) else None)
-        out = T.get_leave_balance(ctx, ctx.employee_id, leave_type)
-        parts = ", ".join(f"{k}: {v:g} days" for k, v in out["balances"].items()) or "no balance on record"
-        args = {"employee_id": ctx.employee_id, **({"leave_type": leave_type} if leave_type else {})}
-        return {"answer": f"Your current leave balance — {parts}.", "route": "tool", "citations": [],
-                "tool_calls": [{"name": "get_leave_balance", "args": args, "status": "success"}]}
+    """Returns dict(answer, route, citations, tool_calls).
 
-    if _REQUESTS.search(message):
-        out = T.list_leave_requests(ctx, ctx.employee_id)
-        lines = [f"- {r['leave_type']} leave, {r['start_date']} to {r['end_date']} ({r['working_days']} working "
-                 f"days), {r['status']}" for r in out["requests"]] or ["- none found"]
-        return {"answer": "Your leave requests:\n" + "\n".join(lines), "route": "tool", "citations": [],
-                "tool_calls": [{"name": "list_leave_requests", "args": {"employee_id": ctx.employee_id},
-                                "status": "success"}]}
+    Raises PermissionDenied when the requester may not see the employee (or team) asked about;
+    agent._offline turns that into a 'refuse' answer with a fixed message.
+    """
+    from app.orchestrator import prompts
+    from app.orchestrator.agent import _format_tool_results
+
+    wants_balance, wants_requests = bool(_BALANCE.search(message)), bool(_REQUESTS.search(message))
+    others = other_employees(ctx, message)
+    mentions_team = bool(_TEAM.search(message)) and not _POLICY_WORDS.search(message)
+    if not others and (mentions_team or is_team_question(message)):
+        if wants_balance:                 # "my team's balances" = data about many employees at once
+            return _refuse(prompts.BULK_TEXT)
+        if mentions_team or not wants_requests:
+            return _team_answer(ctx, message)
+
+    if wants_balance or wants_requests:
+        if len(others) > 1:
+            return _refuse(prompts.BULK_TEXT)
+        target = others[0] if others else ctx.employee_id   # permission is checked inside the tool
+        if wants_balance:
+            leave_type = "sick" if re.search(r"\bsick\b", message, re.I) else (
+                "annual" if re.search(r"\bannual|vacation\b", message, re.I) else None)
+            out = T.get_leave_balance(ctx, target, leave_type)
+            tool, args = "get_leave_balance", {"employee_id": target,
+                                               **({"leave_type": leave_type} if leave_type else {})}
+        else:
+            out = T.list_leave_requests(ctx, target)
+            tool, args = "list_leave_requests", {"employee_id": target}
+        return {"answer": _format_tool_results(ctx, [{"tool": tool, "result": out}]), "route": "tool",
+                "citations": [], "tool_calls": [{"name": tool, "args": args, "status": "success"}]}
+
+    # A question that names an employee ("E3001 leave plans") is about that person, not a document search.
+    mentions_self = bool(re.search(rf"\b{re.escape(ctx.employee_id)}\b", message, re.I))
+    if others or mentions_self:
+        if len(others) > 1:
+            return _refuse(prompts.BULK_TEXT)
+        target = others[0] if others else ctx.employee_id
+        if not T.can_view_employee(ctx, target):
+            raise T.PermissionDenied()        # same fixed message whether or not the employee exists
+        if _LEAVE_INFO.search(message):
+            out = T.list_leave_requests(ctx, target)
+            return {"answer": _format_tool_results(ctx, [{"tool": "list_leave_requests", "result": out}]),
+                    "route": "tool", "citations": [],
+                    "tool_calls": [{"name": "list_leave_requests", "args": {"employee_id": target},
+                                    "status": "success"}]}
+        return {"answer": f"What would you like to know about {target}? I can show their leave balance or their "
+                          "leave requests.", "route": "clarify", "citations": [], "tool_calls": []}
 
     if _HOLIDAYS.search(message) and not re.search(r"\b(policy|rule|work on|compensat|swap)\b", message, re.I):
         hol = _holiday_answer(ctx, message)
