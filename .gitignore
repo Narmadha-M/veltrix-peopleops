@@ -13,7 +13,7 @@ __pycache__/
 *.key
 
 # Assessment data (provided separately) and runtime output
-data/
+/data/
 logs/
 .models/
 corpus
